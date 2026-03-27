@@ -1,59 +1,129 @@
 ---
-name: git-commit-message
-description: 当用户需要你提交git记录的时候，生成符合 Conventional Commits 的中文 commit 信息
+name: git-commit
+description: 'Execute git commit with conventional commit message analysis, intelligent staging, and message generation. Use when user asks to commit changes, create a git commit, or mentions "/commit". Supports: (1) Auto-detecting type and scope from changes, (2) Generating conventional commit messages from diff, (3) Interactive commit with optional type/scope/description overrides, (4) Intelligent file staging for logical grouping'
+license: MIT
+allowed-tools: Bash
 ---
 
+# Git Commit with Conventional Commits
 
-## 概述
-此技能用于生成 git 的 commit 记录，严格按照以下流程进行
+## Overview
 
-## 流程
+Create standardized, semantic git commits using the Conventional Commits specification. Analyze the actual diff to determine appropriate type, scope, and message.
 
-### 步骤 1：获取变更概览
+## Conventional Commit Format
+
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+## Commit Types
+
+| Type       | Purpose                        |
+| ---------- | ------------------------------ |
+| `feat`     | New feature                    |
+| `fix`      | Bug fix                        |
+| `docs`     | Documentation only             |
+| `style`    | Formatting/style (no logic)    |
+| `refactor` | Code refactor (no feature/fix) |
+| `perf`     | Performance improvement        |
+| `test`     | Add/update tests               |
+| `build`    | Build system/dependencies      |
+| `ci`       | CI/config changes              |
+| `chore`    | Maintenance/misc               |
+| `revert`   | Revert commit                  |
+
+## Breaking Changes
+
+```
+# Exclamation mark after type/scope
+feat!: remove deprecated endpoint
+
+# BREAKING CHANGE footer
+feat: allow config to extend other configs
+
+BREAKING CHANGE: `extends` key behavior changed
+```
+
+## Workflow
+
+### 1. Analyze Diff
+
 ```bash
-git diff --staged --stat
-git diff --stat
+# If files are staged, use staged diff
+git diff --staged
+
+# If nothing staged, use working tree diff
+git diff
+
+# Also check status
+git status --porcelain
 ```
 
-### 步骤 2：智能选择性读取
-根据 --stat 结果判断：
+### 2. Stage Files (if needed)
 
-  - 核心代码文件（.py/.ts/.js/.go 等）：读取完整 diff，使用 -U2 减少上下文
-  - 配置文件（.json/.yaml/.toml）：读取完整 diff
-  - 锁文件（*.lock, package-lock.json）：跳过，仅记录"依赖更新"
-  - 生成文件/缓存（dist/, .cache/, *.min.js）：跳过
-  - 大文件（单文件 >200 行变更）：只读 --stat，根据文件名推断
+If nothing is staged or you want to group changes differently:
 
-  示例：只读核心文件的 diff
-  ```bash
-  git diff --staged -U2 -- "*.py" "*.ts" ":!*.lock"
-  ```
+```bash
+# Stage specific files
+git add path/to/file1 path/to/file2
 
-### 步骤 3：生成 commit 信息
+# Stage by pattern
+git add *.test.*
+git add src/components/*
 
-格式如下：
-
-```md
-type(scope): subject
-
-  body
-
-type（英文）：feat/fix/docs/style/refactor/perf/test/chore
-scope（可选，英文/拼音）：如 api, ui, auth
-subject（中文，≤20字）：简述主要变更
-body（中文）：详细说明变更内容和原因，多个要点用列表
+# Interactive staging
+git add -p
 ```
 
-示例：
+**Never commit secrets** (.env, credentials.json, private keys).
 
-```md
-feat(auth): 添加用户登录功能
+### 3. Generate Commit Message
 
-  - 实现基于 JWT 的认证系统
-  - 添加登录接口和令牌验证中间件
-  - 更新依赖
+Analyze the diff to determine:
+
+- **Type**: What kind of change is this?
+- **Scope**: What area/module is affected?
+- **Description**: One-line summary of what changed (present tense, imperative mood, <72 chars)
+
+### 4. Execute Commit
+
+```bash
+# Single line
+git commit -m "<type>[scope]: <description>"
+
+# Multi-line with body/footer
+git commit -m "$(cat <<'EOF'
+<type>[scope]: <description>
+
+<optional body>
+
+<optional footer>
+EOF
+)"
 ```
-注意事项
-  - 优先分析 staged 变更（已 git add 的）
-  - 如果没有 staged，再看 unstaged
-  - 直接输出 commit 信息，无需额外说明
+
+## Best Practices
+
+- One logical change per commit
+- Present tense: "add" not "added"
+- Imperative mood: "fix bug" not "fixes bug"
+- Reference issues: `Closes #123`, `Refs #456`
+- Keep description under 72 characters
+
+## Git Safety Protocol
+
+- NEVER update git config
+- NEVER run destructive commands (--force, hard reset) without explicit request
+- NEVER skip hooks (--no-verify) unless user asks
+- NEVER force push to main/master
+- If commit fails due to hooks, fix and create NEW commit (don't amend)
+
+
+## 重点
+
+- 提交信息写中文内容
